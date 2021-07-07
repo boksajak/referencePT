@@ -1,6 +1,6 @@
 # The Reference Path Tracer Code sample
 
-This is a code sample accompanying Chapter 14 "The Reference Path Tracer" in Ray Tracing Gems 2 book. Code is based on the [IntroToDXR](https://github.com/acmarrs/IntroToDXR/) and implements a path tracer described in the article. The sample application loads GLTF scenes, specified via command line. The core of the path tracer can be found in single HLSL file - `PathTracer.hlsl`.
+This is a supplemental code accompanying Ray Tracing Gems II, Chapter 14: The Reference Path Tracer. Code is based on the [IntroToDXR](https://github.com/acmarrs/IntroToDXR/) and implements a path tracer described in the article. The sample application loads GLTF scenes, specified via command line. The core of the path tracer can be found in single HLSL file - `PathTracer.hlsl`.
 
 ## Command Line Arguments
 
