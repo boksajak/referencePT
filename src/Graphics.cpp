@@ -729,12 +729,12 @@ void CreateDevice(D3D12Global &d3d)
 			printf("Running on DXGI Adapter %S\n", adapterDesc.Description);
 			break;
 		}
+	}
 
-		if (d3d.device == nullptr)
-		{
-			// Didn't find a device that supports ray tracing.
-			Utils::Validate(E_FAIL, L"Error: failed to create ray tracing device!");
-		}
+	if (d3d.device == nullptr)
+	{
+		// Didn't find a device that supports ray tracing.
+		Utils::Validate(E_FAIL, L"Error: failed to create ray tracing device!");
 	}
 }
 
