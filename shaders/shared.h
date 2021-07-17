@@ -47,7 +47,8 @@
 //    Stuff shared between C++ and HLSL code
 // -------------------------------------------------------------------------
 
-#define MAX_INSTANCES_COUNT 0xFFFF
+#define MAX_INSTANCES_COUNT 0x4000
+#define MAX_MATERIALS_COUNT 0x400
 #define MAX_TEXTURES_COUNT 0xFFFF
 
 #define STANDARD_RAY_INDEX 0
@@ -64,12 +65,12 @@
 
 // Functions for encoding/decoding material and geometry ID into single integer
 inline uint packInstanceID(uint materialID, uint geometryID) {
-	return ((geometryID & 0xFFFF) << 16) | (materialID & 0xFFFF);
+	return ((geometryID & 0x3FFF) << 10) | (materialID & 0x3FF);
 }
 
 inline void unpackInstanceID(uint instanceID, OUT_PARAMETER(uint) materialID, OUT_PARAMETER(uint) geometryID) {
-	materialID = instanceID & 0xFFFF;
-	geometryID = (instanceID >> 16) & 0xFFFF;
+	materialID = instanceID & 0x3FF;
+	geometryID = (instanceID >> 10) & 0x3FFF;
 }
 
 // Conversion between linear and sRGB color spaces

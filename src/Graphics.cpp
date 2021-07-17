@@ -242,7 +242,7 @@ void CreateGeometryBuffers(D3D12Global &d3d, D3D12Resources &resources, Scene &s
 
 	// Create the material buffer
 	{
-		Utils::Validate(scene.materials.size() > 0xFFFF ? E_FAIL : S_OK, L"Error: too many materials!");
+		Utils::Validate(scene.materials.size() > MAX_MATERIALS_COUNT ? E_FAIL : S_OK, L"Error: too many materials!");
 
 		// Prepare a linear buffer of all materials
 		std::vector<MaterialData> materials;
