@@ -34,7 +34,7 @@
 namespace Textures
 {
     bool Initialize();
-    bool LoadTexture(Texture &texture);
+    bool LoadTexture(Texture &texture, DirectX::XMFLOAT2& uvAdjustment);
     void UnloadTexture(Texture &texture);
     void Cleanup();
 }

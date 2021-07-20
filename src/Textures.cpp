@@ -77,13 +77,14 @@ namespace Textures
 	 * Compute the aligned memory required for the texture.
 	 * Add texels to the texture if either dimension is not a factor of 4 (required for BC7 compressed formats).
 	 */
-	bool FormatTexture(TextureData& texture)
+	bool FormatTexture(TextureData& texture, DirectX::XMFLOAT2& uvAdjustment)
 	{
 		// BC7 compressed textures require 4x4 texel blocks
 		// Add texels to the texture if its original dimensions aren't factors of 4
 		if (texture.width % 4 != 0 || texture.height % 4 != 0)
 		{
 			// Get original row stride
+			UINT originalWidth = texture.width;
 			UINT rowSize = (texture.width * texture.stride);
 			UINT numRows = texture.height;
 
@@ -94,14 +95,34 @@ namespace Textures
 			UINT alignedRowSize = (texture.width * texture.stride);
 			UINT size = alignedRowSize * texture.height;
 
+			// Figure out uv adjustment needed due to padding (we want UVs to point to the area where original unpadded texture is)
+			uvAdjustment.x = float(originalWidth) / float(texture.width);
+			uvAdjustment.y = float(numRows) / float(texture.height);
+
 			// Copy the original texture into the new one
 			size_t offset = 0;
 			size_t alignedOffset = 0;
 			UINT8* texels = new UINT8[size];
-			memset(texels, 0, size);
+
 			for (UINT row = 0; row < numRows; row++)
 			{
 				memcpy(&texels[alignedOffset], &texture.texels[offset], rowSize);
+				
+				// Fill empty space in the aligned row with border pixel value
+				for (UINT i = 0; i < texture.width - originalWidth; i++) {
+					memcpy(&texels[alignedOffset + rowSize + (i * UINT(texture.stride))], &texels[alignedOffset + rowSize - texture.stride], texture.stride);
+				}
+
+				alignedOffset += alignedRowSize;
+				offset += rowSize;
+			}
+			
+			// Copy last row values into new rows
+			UINT lastRowOffset = alignedOffset - alignedRowSize;
+			for (UINT row = 0; row < texture.height - numRows; row++)
+			{
+				memcpy(&texels[alignedOffset], &texels[lastRowOffset], alignedRowSize);
+
 				alignedOffset += alignedRowSize;
 				offset += rowSize;
 			}
@@ -112,9 +133,8 @@ namespace Textures
 		}
 
 		// Compute the texture's aligned memory size
-		UINT rowSize = (texture.width * texture.stride);
-		UINT rowPitch = ALIGN(256, rowSize);          // 256 == D3D12_TEXTURE_DATA_PITCH_ALIGNMENT
-		texture.texelBytes = (rowPitch * UINT64(texture.height));
+		texture.rowPitch = (texture.width * texture.stride);
+		texture.texelBytes = (texture.rowPitch * UINT64(texture.height));
 
 		return (texture.texelBytes > 0);
 	}
@@ -227,8 +247,12 @@ namespace Textures
 	/**
 	* Load an image from disk using STB library.
 	*/
-	bool LoadTexture(Texture& texture)
+	bool LoadTexture(Texture& texture, DirectX::XMFLOAT2& uvAdjustment)
 	{
+		// Initialize adjustment to identity
+		uvAdjustment.x = 1.0f;
+		uvAdjustment.y = 1.0f;
+
 		// Load the texture with stb_image (require 4 component RGBA)
 		TextureData textureData;
 		textureData.texels = stbi_load(texture.filepath.c_str(), &textureData.width, &textureData.height, &textureData.stride, STBI_rgb_alpha);
@@ -247,7 +271,7 @@ namespace Textures
 		}
 
 		// Prep the texture for compression and use on the GPU (alignment to 4x4) 
-		FormatTexture(textureData);
+		FormatTexture(textureData, uvAdjustment);
 
 		// Store raw texture data as mip level 0
 		texture.mips.push_back(textureData);

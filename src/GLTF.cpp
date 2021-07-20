@@ -232,8 +232,15 @@ void ParseGLFTextures(const tinygltf::Model &gltfData, const ConfigInfo &config,
             texture.isCopy = true;
 		} else {
 
+            DirectX::XMFLOAT2 uvAdjustment;
+
 			// Load the texture from disk
-			Textures::LoadTexture(texture);
+			Textures::LoadTexture(texture, uvAdjustment);
+
+            // Remember adjustment of UVs for this texture (if it was resized during load, e.g. to add padding, we need to apply this to vertex UVs)
+            if (uvAdjustment.x != 1.0f || uvAdjustment.y != 1.0f) {
+                scene.textureUVAdjustment[textureIndex] = uvAdjustment;
+            }
 
 			loadedTextures.insert(std::pair<std::string, size_t>(texture.filepath, scene.textures.size()));
 		}
@@ -243,6 +250,22 @@ void ParseGLFTextures(const tinygltf::Model &gltfData, const ConfigInfo &config,
     }
 
     Textures::Cleanup();
+}
+
+// Helper to load UV adjustment for given texture and issue a warning if vertex needs multiple different UV adjustments for its textures 
+void getUVAdjustment(const int texIdx, Scene& scene, bool& uvAdjustmentNeeded, DirectX::XMFLOAT2& uvAdjustment) {
+    if (texIdx != INVALID_ID && scene.textureUVAdjustment.find(texIdx) != scene.textureUVAdjustment.end()) {
+        DirectX::XMFLOAT2 newUVAdjustment = scene.textureUVAdjustment[texIdx];
+
+        // Check if UV adjustment for this texture is same as for previously checked textures
+        if (uvAdjustmentNeeded && (newUVAdjustment.x != uvAdjustment.x || newUVAdjustment.y != uvAdjustment.y)) {
+            // Different UV adjustments are required for different textures on same vertex - revert adjustment to identity
+            printf("Different UV adjustments are needed for emissive texture - adjustment won't be applied. Please use textures with sizes which are multiple of 4 to prevent texture distortion.");
+            newUVAdjustment = DirectX::XMFLOAT2(1.0f, 1.0f);
+        }
+        uvAdjustmentNeeded = true;
+        uvAdjustment = newUVAdjustment;
+    }
 }
 
 /**
@@ -370,6 +393,16 @@ void ParseGLTFMeshes(const tinygltf::Model &gltfData, Scene &scene)
                 assert(uv0Stride == 8);
             }
 
+            // Figure out how to adjust UVs for this mesh
+            const Material& material = scene.materials[m.material];
+            DirectX::XMFLOAT2 uvAdjustment = DirectX::XMFLOAT2(1.0f, 1.0f);
+            bool uvAdjustmentNeeded = false;
+
+            // Load UV adjustments for all textures used by this mesh and apply adjustment only if it's same for all textures
+            getUVAdjustment(material.data.baseColorTexIdx, scene, uvAdjustmentNeeded, uvAdjustment);
+            getUVAdjustment(material.data.emissiveTexIdx, scene, uvAdjustmentNeeded, uvAdjustment);
+            getUVAdjustment(material.data.roughnessMetalnessTexIdx, scene, uvAdjustmentNeeded, uvAdjustment);
+          
             // Get the vertex data
             for (size_t vertexIndex = 0; vertexIndex < positionAccessor.count; vertexIndex++)
             {
@@ -394,6 +427,10 @@ void ParseGLTFMeshes(const tinygltf::Model &gltfData, Scene &scene)
                 {
                     address = uv0Buffer.data.data() + uv0BufferView.byteOffset + uv0Accessor.byteOffset + (vertexIndex * uv0Stride);
                     memcpy(&v.uv0, address, uv0Stride);
+
+                    // Adjust UV coordinates if needed (e.g. due to added padding). Default is no adjustment [1;1]
+                    v.uv0.x *= uvAdjustment.x;
+                    v.uv0.y *= uvAdjustment.y;
                 }
 
                 m.vertices.push_back(v);

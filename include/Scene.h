@@ -31,6 +31,7 @@
 #include "../shaders/shared.h"
 #include <cmath>
 #include <unordered_set>
+#include <map>
 
 struct Camera
 {
@@ -166,4 +167,5 @@ struct Scene
     std::vector<Material> materials;
     std::vector<Texture> textures;
     std::unordered_set<size_t> srgbTextures;
+    std::map<size_t, DirectX::XMFLOAT2> textureUVAdjustment;
 };
