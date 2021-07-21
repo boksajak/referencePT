@@ -340,27 +340,30 @@ void ParseGLTFMeshes(const tinygltf::Model &gltfData, Scene &scene)
             // Vertex positions
             tinygltf::Accessor positionAccessor = gltfData.accessors[positionIndex];
             tinygltf::BufferView positionBufferView = gltfData.bufferViews[positionAccessor.bufferView];
-            tinygltf::Buffer positionBuffer = gltfData.buffers[positionBufferView.buffer];
+            const tinygltf::Buffer& positionBuffer = gltfData.buffers[positionBufferView.buffer];
+            const UINT8* positionBufferAddress = positionBuffer.data.data();
             int positionStride = tinygltf::GetComponentSizeInBytes(positionAccessor.componentType) * tinygltf::GetNumComponentsInType(positionAccessor.type);
             assert(positionStride == 12);
 
             // Vertex indices
             tinygltf::Accessor indexAccessor = gltfData.accessors[indicesIndex];
             tinygltf::BufferView indexBufferView = gltfData.bufferViews[indexAccessor.bufferView];
-            tinygltf::Buffer indexBuffer = gltfData.buffers[indexBufferView.buffer];
+            const tinygltf::Buffer& indexBuffer = gltfData.buffers[indexBufferView.buffer];
+            const UINT8* indexBufferAddress = indexBuffer.data.data();
             int indexStride = tinygltf::GetComponentSizeInBytes(indexAccessor.componentType) * tinygltf::GetNumComponentsInType(indexAccessor.type);
             m.indices.resize(indexAccessor.count);
 
             // Vertex normals
             tinygltf::Accessor normalAccessor;
             tinygltf::BufferView normalBufferView;
-            tinygltf::Buffer normalBuffer;
+            const UINT8* normalBufferAddress = nullptr;
             int normalStride = -1;
             if (normalIndex > -1)
             {
                 normalAccessor = gltfData.accessors[normalIndex];
                 normalBufferView = gltfData.bufferViews[normalAccessor.bufferView];
-                normalBuffer = gltfData.buffers[normalBufferView.buffer];
+                const tinygltf::Buffer& normalBuffer = gltfData.buffers[normalBufferView.buffer];
+                normalBufferAddress = normalBuffer.data.data();
                 normalStride = tinygltf::GetComponentSizeInBytes(normalAccessor.componentType) * tinygltf::GetNumComponentsInType(normalAccessor.type);
                 assert(normalStride == 12);
             }
@@ -368,13 +371,14 @@ void ParseGLTFMeshes(const tinygltf::Model &gltfData, Scene &scene)
             // Vertex tangents
             tinygltf::Accessor tangentAccessor;
             tinygltf::BufferView tangentBufferView;
-            tinygltf::Buffer tangentBuffer;
+            const UINT8* tangentBufferAddress = nullptr;
             int tangentStride = -1;
             if (tangentIndex > -1)
             {
                 tangentAccessor = gltfData.accessors[tangentIndex];
                 tangentBufferView = gltfData.bufferViews[tangentAccessor.bufferView];
-                tangentBuffer = gltfData.buffers[tangentBufferView.buffer];
+                const tinygltf::Buffer& tangentBuffer = gltfData.buffers[tangentBufferView.buffer];
+                tangentBufferAddress = tangentBuffer.data.data();
                 tangentStride = tinygltf::GetComponentSizeInBytes(tangentAccessor.componentType) * tinygltf::GetNumComponentsInType(tangentAccessor.type);
                 assert(tangentStride == 16);
             }
@@ -382,13 +386,14 @@ void ParseGLTFMeshes(const tinygltf::Model &gltfData, Scene &scene)
             // Vertex texture coordinates
             tinygltf::Accessor uv0Accessor;
             tinygltf::BufferView uv0BufferView;
-            tinygltf::Buffer uv0Buffer;
+            const UINT8* uv0BufferAddress = nullptr;
             int uv0Stride = -1;
             if (uv0Index > -1)
             {
                 uv0Accessor = gltfData.accessors[uv0Index];
                 uv0BufferView = gltfData.bufferViews[uv0Accessor.bufferView];
-                uv0Buffer = gltfData.buffers[uv0BufferView.buffer];
+                const tinygltf::Buffer& uv0Buffer = gltfData.buffers[uv0BufferView.buffer];
+                uv0BufferAddress = uv0Buffer.data.data();
                 uv0Stride = tinygltf::GetComponentSizeInBytes(uv0Accessor.componentType) * tinygltf::GetNumComponentsInType(uv0Accessor.type);
                 assert(uv0Stride == 8);
             }
@@ -408,24 +413,26 @@ void ParseGLTFMeshes(const tinygltf::Model &gltfData, Scene &scene)
             {
                 Vertex v;
 
-                UINT8* address = positionBuffer.data.data() + positionBufferView.byteOffset + positionAccessor.byteOffset + (vertexIndex * positionStride);
+                {
+                    const UINT8* address = positionBufferAddress + positionBufferView.byteOffset + positionAccessor.byteOffset + (vertexIndex * positionStride);
                 memcpy(&v.position, address, positionStride);
+                }
 
                 if (normalIndex > -1)
                 {
-                    address = normalBuffer.data.data() + normalBufferView.byteOffset + normalAccessor.byteOffset + (vertexIndex * normalStride);
+                    const UINT8* address = normalBufferAddress + normalBufferView.byteOffset + normalAccessor.byteOffset + (vertexIndex * normalStride);
                     memcpy(&v.normal, address, normalStride);
                 }
 
                 if (tangentIndex > -1)
                 {
-                    address = tangentBuffer.data.data() + tangentBufferView.byteOffset + tangentAccessor.byteOffset + (vertexIndex * tangentStride);
+                    const UINT8* address = tangentBufferAddress + tangentBufferView.byteOffset + tangentAccessor.byteOffset + (vertexIndex * tangentStride);
                     memcpy(&v.tangent, address, tangentStride);
                 }
 
                 if (uv0Index > -1)
                 {
-                    address = uv0Buffer.data.data() + uv0BufferView.byteOffset + uv0Accessor.byteOffset + (vertexIndex * uv0Stride);
+                    const UINT8* address = uv0BufferAddress + uv0BufferView.byteOffset + uv0Accessor.byteOffset + (vertexIndex * uv0Stride);
                     memcpy(&v.uv0, address, uv0Stride);
 
                     // Adjust UV coordinates if needed (e.g. due to added padding). Default is no adjustment [1;1]
@@ -439,7 +446,7 @@ void ParseGLTFMeshes(const tinygltf::Model &gltfData, Scene &scene)
             // Get the index data
             // Indices can be either unsigned char, unsigned short, or unsigned long
             // Converting to full precision for easy use on GPU
-            UINT8* baseAddress = indexBuffer.data.data() + indexBufferView.byteOffset + indexAccessor.byteOffset;
+            const UINT8* baseAddress = indexBufferAddress + indexBufferView.byteOffset + indexAccessor.byteOffset;
             if (indexStride == 1)
             {
                 std::vector<UINT8> quarter;
