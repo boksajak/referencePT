@@ -612,7 +612,8 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 	payload.encodedNormals = encodeNormals(vertex.geometryNormal, vertex.shadingNormal);
 	payload.hitPosition = vertex.position;
 	payload.materialID = materialID;
-	payload.uvs = float16_t2(vertex.uv);
+	//payload.uvs = float16_t2(vertex.uv);
+    payload.uvs = float2(vertex.uv);
 }
 
 [shader("anyhit")]
